@@ -1,0 +1,9 @@
+[package]
+name = "rypust"
+version = "0.4.8"
+authors = [
+    "He-STALIN <hene.stalin@gmail.com>",
+]
+edition = "2024"
+
+[dependencies]
