@@ -41,6 +41,8 @@ pub fn parse_args(args: &[String]) -> CliArgs {
 
     if args.len() < 2 {
         /* запуск интерактивного режима */
+        println!("Not implemented yet");
+        std::process::exit(0)
     }
 
     let mut i = 1; // пропускаем имя программы

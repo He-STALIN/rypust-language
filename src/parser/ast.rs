@@ -7,6 +7,7 @@ use crate::lexer::token::Token;
 pub enum Expr {
     Number(i64),
     Str(String),
+    Float(f64),
     Ident(String),
     Bool(bool),
     Call { 
@@ -21,6 +22,11 @@ pub enum Expr {
     Variable {
         name: Box<Expr>,
         value: Box<Expr>,
+    },
+    Function {
+        name: String,
+        args: Vec<Expr>,
+        body: Vec<Stmt>
     }
 }
 
@@ -32,5 +38,10 @@ pub enum Stmt {
         condition: Expr,       // Условие (например, x > 2)
         then_branch: Vec<Stmt>,// Что делать, если true (блок)
         else_branch: Option<Vec<Stmt>>, // Что делать, если false (может быть, а может и нет)
+    },
+    While {
+        condition: Expr,
+        body: Vec<Stmt>,
+        else_branch: Option<Vec<Stmt>> // условие. если цикл закончился
     },
 }

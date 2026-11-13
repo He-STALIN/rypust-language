@@ -11,6 +11,7 @@ pub enum Token {
     Minus,     // -
     Assign,    // =
     Eq,        // ==
+    NotEq,     // !=
     Star,      // *
     Slash,     // /
     Morethan,  // >
@@ -21,6 +22,7 @@ pub enum Token {
     Comma,     // ,
     Def,       // Define method
     If,        // If operation
+    Elif,      // elif operation
     Else,      // else operation
     For,       // cycle for
     While,     // cycle while
@@ -35,6 +37,7 @@ impl Token {
     pub fn precedence(&self) -> i32 {
         match self {
             Token::Lessthan | Token::Morethan => return 10,
+            Token::Eq | Token::NotEq => return 15,
             Token::Plus | Token::Minus => return 20,
             Token::Star | Token::Slash => return 40,
             _ => -1,

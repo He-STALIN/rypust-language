@@ -1,3 +1,4 @@
+#![allow(unused)]
 pub mod ast;
 
 use crate::lexer::Lexer;
@@ -19,6 +20,30 @@ impl Parser {
     // Сдвигает лексер на следующий токен
     fn advance(&mut self) {
         self.current = self.lexer.next_token();
+    }
+
+    fn skip_newlines(&mut self) {
+        while self.current == Token::NewLine {
+            self.advance();
+        }
+    }
+
+    // Проверяет, что текущий токен — нужный, иначе паникует
+    fn expect(&mut self, expected: Token, error_msg: &str) {
+        if self.current != expected {
+            raiseErr!(SYNTAX_ERR, "{}", error_msg);
+        }
+        self.advance();
+    }
+
+    // Пропускает NewLine, проверяет Indent, съедает его и парсит блок
+    fn parse_indented_block(&mut self) -> Vec<Stmt> {
+        self.skip_newlines();
+        if self.current != Token::INDENT {
+            raiseErr!(INDENT_ERR, "Expected indent after ':'");
+        }
+        self.advance(); // съедаем Indent
+        self.parse_block()
     }
 
     pub fn parse_block(&mut self) -> Vec<Stmt> {
@@ -68,74 +93,104 @@ impl Parser {
         }
 
         if let Token::If = self.current.clone() {
-            self.advance(); // съедаем 'if'
+            return self.parse_if_condition();
+        }
+
+        if let Token::Def = self.current.clone() {
+            self.advance(); // съедаем 'def'
             
-            // 1. Парсим условие
-            let condition = self.parse_expr(0);
+            // 1. Читаем имя функции (должен быть Ident)
+            let name = match self.current.clone() {
+                Token::Ident(n) => {
+                    self.advance();
+                    n
+                },
+                _ => { raiseErr!(SYNTAX_ERR, "Expected function name after 'def'"); },
+            };
             
-            // 2. Ждем двоеточие ':'
+            // 2. Читаем аргументы в скобках
+            if self.current != Token::LParen {
+                raiseErr!(SYNTAX_ERR, "Expected '(' after function name");
+            }
+            self.advance(); // съедаем '('
+            
+            let mut args = Vec::new();
+            while self.current != Token::RParen && self.current != Token::Eof {
+                if let Token::Ident(arg_name) = self.current.clone() {
+                    args.push(Expr::Ident(arg_name)); // Пока просто имена аргументов
+                    self.advance();
+                } else {
+                    raiseErr!(SYNTAX_ERR, "Expected argument name");
+                }
+                
+                // Если есть запятая, пропускаем её и читаем следующий аргумент
+                if self.current == Token::Comma {
+                    self.advance();
+                }
+            }
+            
+            if self.current != Token::RParen {
+                raiseErr!(SYNTAX_ERR, "Expected ')' after arguments");
+            }
+            self.advance(); // съедаем ')'
+            
+            // 3. Ждем двоеточие ':'
             if self.current != Token::Colon {
-                raiseErr!(SYNTAX_ERR, "Expected ':' after if condition");
+                raiseErr!(SYNTAX_ERR, "Expected ':' after function signature");
             }
             self.advance(); // съедаем ':'
             
-            // 3. Пропускаем перенос строки перед блоком
+            // 4. Пропускаем перенос строки и ждем Indent
             while self.current == Token::NewLine {
                 self.advance();
             }
-            
-            // 4. Ждем Indent (начало блока)
             if self.current != Token::INDENT {
-                raiseErr!(INDENT_ERR, "Expected indent after ':'");
+                panic!("SyntaxError: Expected indent after ':'");
             }
             self.advance(); // съедаем Indent
             
-            // 5. Парсим тело блока (parse_block вернет Vec<Stmt>)
-            let then_branch = self.parse_block();
+            // 5. Парсим тело функции
+            let body = self.parse_block();
             
-            // 6. Ищем else (если он есть)
+            // Возвращаем узел функции (если он у тебя в Stmt или Expr — подставь нужное)
+            return Some(Stmt::Expr(
+                Expr::Function {
+                    name: name,
+                    args, // Vec<Expr>
+                    body,
+                }
+            ));
+        }
+
+        if let Token::While = self.current.clone() {
+            self.advance(); // съедаем 'while'
+            
+            // 1. parse condition
+            let condition = self.parse_expr(0);
+            
+            // 2. wait ':'
+            self.expect(Token::Colon, "Expected ':' after while condition");
+            
+            // 3. Parsing cycle body
+            let body = self.parse_indented_block();
+
             let mut else_branch = None;
-            
-            // Пропускаем пустые строки перед else
-            while self.current == Token::NewLine {
-                self.advance();
+
+            if let Token::Else = self.current.clone() {
+                else_branch = self.parse_elif_else_chain();
             }
             
-            if self.current == Token::Else {
-                self.advance(); // съедаем 'else'
-                
-                // Ждем двоеточие после else
-                if self.current == Token::Colon {
-                    self.advance(); // съедаем ':'
-                } else {
-                    raiseErr!(INDENT_ERR, "Expected ':' after else");
-                }
-                
-                // Пропускаем перенос строки
-                while self.current == Token::NewLine {
-                    self.advance();
-                }
-                
-                // Ждем Indent
-                if self.current == Token::INDENT {
-                    self.advance(); // съедаем Indent
-                    else_branch = Some(self.parse_block()); // Сохраняем как Some
-                } else {
-                    raiseErr!(INDENT_ERR, "Expected indent after else:");
-                }
-            }
-            
-            return Some(Stmt::If {
+            return Some(Stmt::While {
                 condition,
-                then_branch,
-                else_branch, // Option<Vec<Stmt>>
+                body,
+                else_branch
             });
         }
 
         let expr = self.parse_expr(0);
 
         if self.current == Token::Assign {
-            self.advance(); // съедаем '='
+            self.advance(); //? eat '='
             let value = self.parse_expr(0);
             
             // Если слева было имя (Expr::Ident), делаем Variable
@@ -169,7 +224,7 @@ impl Parser {
             let prec = op.precedence();
             self.advance(); // съедаем оператор
             
-            // Парсим правую часть с приоритетом ВЫШЕ текущего (чтобы 2+2*2 работало правильно)
+            // Парсим правую часть с приоритетом ВЫШЕ текущего
             let right = self.parse_expr(prec + 1);
 
             left = Expr::Binary {
@@ -219,5 +274,75 @@ impl Parser {
             }
             _ => { raiseErr!(SYNTAX_ERR, "Unexpected token in expression: {:?}", self.current); }
         }
+    }
+
+    fn parse_if_condition(&mut self) -> Option<Stmt> {
+        self.advance(); // съедаем 'if'
+        
+        // 1. Парсим условие
+        let condition = self.parse_expr(0);
+        
+        // 2. Ждем двоеточие
+        println!("Current token: {:?}", self.current);
+        self.expect(Token::Colon, "Expected ':' after if condition");
+        
+        // 3. Парсим тело блока
+        let then_branch = self.parse_indented_block();
+        
+        // 4. Ищем elif или else (передаем управление второй функции)
+        let else_branch = self.parse_elif_else_chain();
+        
+        return Some(Stmt::If {
+            condition,
+            then_branch,
+            else_branch,
+        });
+    }
+
+    /**
+     * Recoursive search of else or elif branches
+     */
+    fn parse_elif_else_chain(&mut self) -> Option<Vec<Stmt>> {
+        // skip empty lines
+        self.skip_newlines();
+        
+        if self.current == Token::Elif {
+            self.advance(); // eat 'elif'
+            
+            // parse condition
+            let condition = self.parse_expr(0);
+            
+            // wait colon
+            self.expect(Token::Colon, "Expected ':' after elif condition");
+            
+            // parse body
+            let then_branch = self.parse_indented_block();
+            
+            // RECURSION: Search elif or else into the else
+            let nested_else = self.parse_elif_else_chain();
+            
+            // Packing to Stmt::If knot
+            let if_stmt = Stmt::If {
+                condition,
+                then_branch,
+                else_branch: nested_else,
+            };
+            
+            return Some(vec![if_stmt]);
+        } else if self.current == Token::Else {
+            self.advance(); // съедаем 'else'
+            
+            // Ждем двоеточие
+            self.expect(Token::Colon, "Expected ':' after else");
+            
+            // Парсим тело
+            let then_branch = self.parse_indented_block();
+            
+            // Else doen't have nested condition, so we return branch
+            return Some(then_branch);
+        }
+        
+        // if condition else/if is empty return None
+        None
     }
 }

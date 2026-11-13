@@ -1,8 +1,8 @@
 [package]
 name = "rypust"
-version = "0.4.8"
+version = "0.6.3"
 authors = [
-    "He-STALIN <hene.stalin@gmail.com>",
+    "He-STALIN <\x1b]8;;https://github.com/He-STALIN\x1B\\GitHub\x1B]8;;\x1b\\>",
 ]
 edition = "2024"
 

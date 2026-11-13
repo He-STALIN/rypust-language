@@ -74,6 +74,11 @@ impl Lexer {
 
         let c = self.chars[self.pos];
 
+        if c == '#' { // skip comments
+            while self.chars[self.pos] != '\n' {
+                self.pos += 1;
+            }
+        }
         // Обработка переноса строки
         if c == '\n' {
             self.pos += 1;
@@ -145,12 +150,6 @@ impl Lexer {
         }
     }
 
-    // fn skip_whitespace(&mut self) {
-    //     while self.pos < self.chars.len() && self.chars[self.pos].is_whitespace() {
-    //         self.pos += 1;
-    //     }
-    // }
-
     fn read_number(&mut self) -> Token {
         let start = self.pos;
         while self.pos < self.chars.len() && self.chars[self.pos].is_ascii_digit() {
@@ -182,6 +181,7 @@ impl Lexer {
         match s.as_str() {
             "def" => Token::Def,
             "if" => Token::If,
+            "elif" => Token::Elif,
             "else" => Token::Else,
             "for" => Token::For,
             "while" => Token::While,
