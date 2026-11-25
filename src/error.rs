@@ -1,0 +1,12 @@
+pub const SYNTAX_ERR: &str = "SyntaxError";
+pub const INDENT_ERR: &str = "IndentationError";
+pub const RUNTIME_ERR: &str = "RuntimeError";
+pub const KEY_ERR: &str = "KeyError";
+pub const NAME_ERR: &str = "NameError";
+pub const INDEX_ERR: &str = "IndexError";
+pub const VALUE_ERR: &str = "ValueError";
+pub const BUFF_ERR: &str = "BufferError";
+pub const TYPE_ERR: &str = "TypeError";
+pub const IMPORT_ERR: &str = "ImportError";
+pub const EOF_ERR: &str = "EOFError";
+pub const ATTR_ERR: &str = "AttributeError";

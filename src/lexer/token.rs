@@ -1,3 +1,4 @@
+use super::span::Span;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Number(i64),
@@ -43,4 +44,9 @@ impl Token {
             _ => -1,
         }
     }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpannedToken {
+    pub token: Token,
+    pub span: Span,
 }

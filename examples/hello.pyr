@@ -1,17 +1,5 @@
 $prog soft
 
 # переменные
-x = 5
-
-# условия
-if x == 5:
-    # циклы (пока только while)
-    while x < 10:
-        print("iter")
-        x = x + 1
-    else:
-        print("now x is 10")
-elif x < 5:
-    print("x не дотягивает")
-else:
-    print("x другое число")
+int = 5
+print(int)
